@@ -51,12 +51,17 @@ func TestDBSimilarity2(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	d, err := NewVector([]float64{-5000, 12000}, "more data")
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	db := new(DB)
-	db.AddVector(a)
 	db.AddVector(b)
+	db.AddVector(d)
 	db.AddVector(c)
-	if db.Len() != 3 {
+	db.AddVector(a)
+	if db.Len() != 4 {
 		t.Fatal("invalid length")
 	}
 
@@ -65,7 +70,7 @@ func TestDBSimilarity2(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	r, err := db.SimilarVectors(x, 2, 0.1)
+	r, err := db.SimilarVectors(x, 4, 0.1)
 	if err != nil {
 		t.Fatal(err)
 	}

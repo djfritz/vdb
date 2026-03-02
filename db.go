@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"slices"
 	"sync"
 )
 
@@ -130,14 +131,6 @@ func (s *similarityHeap) Pop() any {
 	return x
 }
 
-func (s similarityHeap) reverseVectors() []*Vector {
-	var r []*Vector
-	for i := len(s) - 1; i >= 0; i-- {
-		r = append(r, s[i].v)
-	}
-	return r
-}
-
 func (d *DB) Len() int {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
@@ -170,5 +163,11 @@ func (d *DB) SimilarVectors(x *Vector, n int, t float64) ([]*Vector, error) {
 		}
 	}
 
-	return h.reverseVectors(), nil
+	var r []*Vector
+	for h.Len() > 0 {
+		r = append(r, heap.Pop(h).(*similarVector).v)
+	}
+	slices.Reverse(r)
+
+	return r, nil
 }
