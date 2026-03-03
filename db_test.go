@@ -1,6 +1,9 @@
 package vdb
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func TestDBSimilarity(t *testing.T) {
 	a, err := NewVector([]float64{10, 9}, "kris is a potato")
@@ -79,5 +82,34 @@ func TestDBSimilarity2(t *testing.T) {
 	}
 	if r[1].GetData().(string) != "john is a fool" {
 		t.Fatalf("invalid vector returned: %v", r[1].GetData().(string))
+	}
+}
+
+func TestDBParallel(t *testing.T) {
+	db := new(DB)
+	db.SetParallel(31) // should leave a remainder
+
+	for i := 0; i < 1000; i++ {
+		x, err := NewVector([]float64{float64(i)}, fmt.Sprintf("data%v", i))
+		if err != nil {
+			t.Fatal(err)
+		}
+		db.AddVector(x)
+	}
+	if db.Len() != 1000 {
+		t.Fatal("invalid length")
+	}
+
+	x, err := NewVector([]float64{0}, "Who is a potato?")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := db.SimilarVectors(x, 1000, -1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(r) != 1000 {
+		t.Fatal("invalid response", len(r))
 	}
 }

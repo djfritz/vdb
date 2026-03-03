@@ -3,17 +3,31 @@ package vdb
 import (
 	"container/heap"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"slices"
 	"sync"
 )
+
+var ErrInvalidParallel = errors.New("number of threads must be >= 0")
 
 type DB struct {
 	mtx        sync.Mutex
 	vectors    []*Vector
 	filename   string
 	fileBacked bool
+	p          int
+}
+
+func (d *DB) SetParallel(p int) error {
+	if p < 0 {
+		return ErrInvalidParallel
+	}
+	d.p = p
+	return nil
 }
 
 func (d *DB) SetFilename(f string) {
@@ -143,20 +157,41 @@ func (d *DB) SimilarVectors(x *Vector, n int, t float64) ([]*Vector, error) {
 	h := new(similarityHeap)
 	heap.Init(h)
 
-	for _, v := range d.vectors {
-		cs, err := x.CosineSimilarity(v)
-		if err != nil {
-			return nil, err
-		}
+	p := d.p
+	if p == 0 {
+		p = runtime.NumCPU()
+	}
 
-		if cs < t {
-			continue
-		}
+	// split vectors in to p partitions, or the length of vectors if it's less than p
+	part := p
+	if len(d.vectors) < p {
+		part = len(d.vectors)
+	}
+	step := len(d.vectors) / part
+	remainder := len(d.vectors) % part
 
-		s := &similarVector{
-			s: cs,
-			v: v,
+	coalesce := make(chan *similarVector, len(d.vectors))
+	var wg sync.WaitGroup
+	var last int
+	for i := range part {
+		wg.Add(1)
+		start := last
+		end := start + step
+		if i < remainder {
+			end++
 		}
+		fmt.Println(start, end)
+		if end > len(d.vectors) {
+			end = len(d.vectors)
+		}
+		go similarPartition(coalesce, x, d.vectors[start:end], t, &wg)
+		last = end
+	}
+
+	wg.Wait()
+	close(coalesce)
+
+	for s := range coalesce {
 		heap.Push(h, s)
 		if h.Len() > n {
 			heap.Pop(h)
@@ -170,4 +205,24 @@ func (d *DB) SimilarVectors(x *Vector, n int, t float64) ([]*Vector, error) {
 	slices.Reverse(r)
 
 	return r, nil
+}
+
+func similarPartition(coalesce chan *similarVector, x *Vector, vectors []*Vector, t float64, wg *sync.WaitGroup) {
+	defer wg.Done()
+	for _, v := range vectors {
+		cs, err := x.CosineSimilarity(v)
+		if err != nil {
+			panic(err)
+		}
+
+		if cs < t {
+			continue
+		}
+
+		s := &similarVector{
+			s: cs,
+			v: v,
+		}
+		coalesce <- s
+	}
 }
