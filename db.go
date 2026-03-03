@@ -4,7 +4,6 @@ import (
 	"container/heap"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"runtime"
@@ -180,7 +179,6 @@ func (d *DB) SimilarVectors(x *Vector, n int, t float64) ([]*Vector, error) {
 		if i < remainder {
 			end++
 		}
-		fmt.Println(start, end)
 		if end > len(d.vectors) {
 			end = len(d.vectors)
 		}
