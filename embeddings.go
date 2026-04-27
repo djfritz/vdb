@@ -12,7 +12,7 @@ import (
 	"net/http"
 )
 
-func Embeddings(input string, model string) ([][]float64, error) {
+func Embeddings(input, url, model string) ([][]float64, error) {
 	data, err := json.Marshal(EmbedRequest{
 		Model: model,
 		Input: input,
@@ -22,7 +22,7 @@ func Embeddings(input string, model string) ([][]float64, error) {
 	}
 
 	sdata := bytes.NewReader(data)
-	resp, err := http.Post("http://127.0.0.1:11434/api/embed", "application/json", sdata)
+	resp, err := http.Post(url, "application/json", sdata)
 	if err != nil {
 		return nil, err
 	}
