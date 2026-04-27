@@ -157,6 +157,11 @@ func (d *DB) Len() int {
 func (d *DB) SimilarVectors(x *Vector, n int, t float64) ([]*Vector, error) {
 	d.mtx.Lock()
 	defer d.mtx.Unlock()
+
+	if len(d.vectors) == 0 {
+		return nil, nil
+	}
+
 	h := new(similarityHeap)
 	heap.Init(h)
 
